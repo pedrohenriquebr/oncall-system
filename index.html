@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Sobreaviso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .drawer-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .page-transition {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .hidden-page {
+            opacity: 0;
+            pointer-events: none;
+            position: absolute; /* Keep layout stable */
+            top: 0; /* Align hidden pages */
+            left: 0; /* Align hidden pages */
+            width: 100%; /* Ensure hidden pages don't affect width */
+            visibility: hidden; /* Better for accessibility and performance */
+        }
+
+        .visible-page {
+            opacity: 1;
+            pointer-events: all;
+            position: relative; /* Take up space */
+            visibility: visible;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 50;
+        }
+
+        .badge {
+            position: absolute;
+            top: -0.5rem;
+            right: -0.5rem;
+        }
+
+        /* Overlay for mobile drawer */
+        #drawer-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <!-- App Container -->
+    <div class="flex h-screen overflow-hidden">
+        <!-- Drawer Overlay (for mobile) -->
+        <div id="drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden opacity-0 pointer-events-none"></div>
+
+        <!-- Drawer -->
+        <div id="drawer" class="drawer-transition fixed md:relative w-64 h-full bg-white shadow-lg z-40 transform -translate-x-full md:translate-x-0">
+            <div class="flex items-center justify-center h-16 px-4 bg-blue-600 text-white">
+                <span class="text-xl font-medium">Sobreaviso</span>
+            </div>
+            <div class="overflow-y-auto h-[calc(100%-11rem)]"> <!-- Adjusted height for user profile -->
+                <nav class="p-2">
+                    <div class="space-y-1">
+                        <button onclick="showPage('dashboard', this)" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-200 focus:bg-gray-200 focus:outline-none nav-button bg-gray-200"> <!-- Initial active page -->
+                            <span class="material-icons mr-3">dashboard</span>
+                            Dashboard
+                        </button>
+                        <button onclick="showPage('teams', this)" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-200 focus:bg-gray-200 focus:outline-none nav-button">
+                            <span class="material-icons mr-3">groups</span>
+                            Equipes
+                        </button>
+                        <button onclick="showPage('schedule', this)" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-200 focus:bg-gray-200 focus:outline-none nav-button">
+                            <span class="material-icons mr-3">calendar_today</span>
+                            Escala
+                        </button>
+                        <button onclick="showPage('history', this)" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-200 focus:bg-gray-200 focus:outline-none nav-button">
+                            <span class="material-icons mr-3">history</span>
+                            Histórico
+                        </button>
+                        <button onclick="showPage('notifications', this)" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-200 focus:bg-gray-200 focus:outline-none nav-button">
+                            <span class="material-icons mr-3">notifications</span>
+                            Notificações
+                            <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">3</span>
+                        </button>
+                        <button onclick="showPage('settings', this)" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-900 rounded-lg hover:bg-gray-200 focus:bg-gray-200 focus:outline-none nav-button">
+                            <span class="material-icons mr-3">settings</span>
+                            Configurações
+                        </button>
+                    </div>
+                </nav>
+            </div>
+            <div class="absolute bottom-0 w-full p-4 border-t border-gray-200 bg-white">
+                <div class="flex items-center">
+                    <img class="w-8 h-8 rounded-full" src="https://randomuser.me/api/portraits/women/44.jpg" alt="User profile">
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900">Ana Silva</p>
+                        <p class="text-xs text-gray-500">Admin</p>
+                    </div>
+                    <button class="ml-auto p-1 rounded-full hover:bg-gray-100 focus:outline-none">
+                        <span class="material-icons text-gray-600 text-base">logout</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Navigation -->
+            <header class="flex items-center justify-between h-16 px-4 bg-white shadow-sm z-20"> <!-- Lower z-index than drawer -->
+                <div class="flex items-center">
+                    <button id="menu-button" class="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none mr-2">
+                        <span class="material-icons">menu</span>
+                    </button>
+                    <h1 id="page-title" class="text-lg font-medium text-gray-900">Dashboard</h1>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none relative">
+                        <span class="material-icons text-gray-700">notifications</span>
+                        <span class="badge bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">3</span>
+                    </button>
+                    <button class="p-2 rounded-full hover:bg-gray-100 focus:outline-none">
+                        <span class="material-icons text-gray-700">help_outline</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page Content Wrapper -->
+            <main class="flex-1 overflow-y-auto p-4 relative">
+                <!-- Dashboard Page -->
+                <div id="dashboard" class="page-transition visible-page">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                    <span class="material-icons">schedule</span>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Em sobreaviso</p>
+                                    <p class="text-2xl font-semibold text-gray-900">5</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                    <span class="material-icons">check_circle_outline</span>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Disponíveis</p>
+                                    <p class="text-2xl font-semibold text-gray-900">12</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                    <span class="material-icons">warning_amber</span>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Alertas hoje</p>
+                                    <p class="text-2xl font-semibold text-gray-900">3</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                    <span class="material-icons">groups</span>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">Equipes</p>
+                                    <p class="text-2xl font-semibold text-gray-900">4</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white rounded-lg shadow overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-200">
+                                <h2 class="text-lg font-medium text-gray-900">Atividades Recentes</h2>
+                            </div>
+                            <div class="divide-y divide-gray-200">
+                                <div class="px-6 py-4">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Carlos Oliveira</div>
+                                            <div class="text-sm text-gray-500">Assumiu sobreaviso às 08:15</div>
+                                        </div>
+                                        <div class="ml-auto text-sm text-gray-500">2 min atrás</div>
+                                    </div>
+                                </div>
+                                <div class="px-6 py-4">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/women/44.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Ana Silva</div>
+                                            <div class="text-sm text-gray-500">Alterou escala da equipe DevOps</div>
+                                        </div>
+                                        <div class="ml-auto text-sm text-gray-500">15 min atrás</div>
+                                    </div>
+                                </div>
+                                <div class="px-6 py-4">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/75.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Marcos Souza</div>
+                                            <div class="text-sm text-gray-500">Alerta crítico resolvido</div>
+                                        </div>
+                                        <div class="ml-auto text-sm text-gray-500">1 hora atrás</div>
+                                    </div>
+                                </div>
+                                 <div class="px-6 py-4 text-center">
+                                    <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-800" onclick="showPage('history'); return false;">Ver todo histórico</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-200">
+                                <h2 class="text-lg font-medium text-gray-900">Sobreaviso Atual</h2>
+                            </div>
+                            <div class="divide-y divide-gray-200">
+                                <div class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Carlos Oliveira</div>
+                                            <div class="text-sm text-gray-500">DevOps</div>
+                                        </div>
+                                        <div class="ml-auto">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Ativo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/women/68.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Juliana Costa</div>
+                                            <div class="text-sm text-gray-500">Infraestrutura</div>
+                                        </div>
+                                        <div class="ml-auto">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Disponível</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/75.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Marcos Souza</div>
+                                            <div class="text-sm text-gray-500">Segurança</div>
+                                        </div>
+                                        <div class="ml-auto">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pausado</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                 <div class="px-6 py-4 text-center">
+                                    <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-800" onclick="showPage('schedule'); return false;">Ver escala completa</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teams Page -->
+                <div id="teams" class="page-transition hidden-page">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-3 sm:space-y-0">
+                        <h2 class="text-2xl font-bold text-gray-900">Equipes</h2>
+                        <button class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <span class="material-icons mr-2 text-base">add</span>
+                            Nova Equipe
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                                <h3 class="text-lg font-medium text-gray-900">Lista de Equipes</h3>
+                                <div class="relative w-full sm:w-auto">
+                                    <input type="text" placeholder="Buscar equipe..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64 text-sm">
+                                    <span class="material-icons absolute left-3 top-2.5 text-gray-400 text-lg">search</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                            <!-- Team Item -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                                    <div class="flex items-center">
+                                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                            <span class="material-icons">code</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-base font-medium text-gray-900">DevOps</div>
+                                            <div class="text-sm text-gray-500">5 membros</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2 self-end sm:self-center">
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 focus:outline-none">
+                                            <span class="material-icons text-base">edit</span>
+                                        </button>
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 focus:outline-none">
+                                            <span class="material-icons text-base">delete_outline</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Team Item -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                                    <div class="flex items-center">
+                                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                            <span class="material-icons">dns</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-base font-medium text-gray-900">Infraestrutura</div>
+                                            <div class="text-sm text-gray-500">8 membros</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2 self-end sm:self-center">
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 focus:outline-none">
+                                            <span class="material-icons text-base">edit</span>
+                                        </button>
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 focus:outline-none">
+                                            <span class="material-icons text-base">delete_outline</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Team Item -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                                    <div class="flex items-center">
+                                        <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                            <span class="material-icons">security</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-base font-medium text-gray-900">Segurança</div>
+                                            <div class="text-sm text-gray-500">4 membros</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2 self-end sm:self-center">
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 focus:outline-none">
+                                            <span class="material-icons text-base">edit</span>
+                                        </button>
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 focus:outline-none">
+                                            <span class="material-icons text-base">delete_outline</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Team Item -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                                    <div class="flex items-center">
+                                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                            <span class="material-icons">support_agent</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-base font-medium text-gray-900">Suporte N1</div>
+                                            <div class="text-sm text-gray-500">6 membros</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2 self-end sm:self-center">
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 focus:outline-none">
+                                            <span class="material-icons text-base">edit</span>
+                                        </button>
+                                        <button class="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 focus:outline-none">
+                                            <span class="material-icons text-base">delete_outline</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="px-6 py-4 border-t border-gray-200 text-center">
+                            <span class="text-sm text-gray-500">Mostrando 4 de 4 equipes</span>
+                            <!-- Add pagination if needed -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Page -->
+                <div id="schedule" class="page-transition hidden-page">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-3 sm:space-y-0">
+                        <h2 class="text-2xl font-bold text-gray-900">Escala de Sobreaviso</h2>
+                        <div class="flex space-x-2">
+                            <button class="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 text-gray-700">
+                                <span class="material-icons mr-1 text-base">filter_alt</span>
+                                Filtrar
+                            </button>
+                            <button class="flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <span class="material-icons mr-1 text-base">add</span>
+                                Nova Escala
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0">
+                                <h3 class="text-lg font-medium text-gray-900">Calendário - Junho 2023</h3>
+                                <div class="flex items-center space-x-2">
+                                    <button class="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none">
+                                        <span class="material-icons text-xl">chevron_left</span>
+                                    </button>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 focus:outline-none">Hoje</button>
+                                    <button class="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none">
+                                        <span class="material-icons text-xl">chevron_right</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-2 sm:p-4 overflow-x-auto">
+                            <div class="grid grid-cols-7 gap-px border-l border-t border-gray-200 bg-gray-200 min-w-[600px]">
+                                <!-- Calendar Header -->
+                                <div class="text-center text-xs sm:text-sm font-medium text-gray-500 py-2 bg-gray-50 border-r border-b">Dom</div>
+                                <div class="text-center text-xs sm:text-sm font-medium text-gray-500 py-2 bg-gray-50 border-r border-b">Seg</div>
+                                <div class="text-center text-xs sm:text-sm font-medium text-gray-500 py-2 bg-gray-50 border-r border-b">Ter</div>
+                                <div class="text-center text-xs sm:text-sm font-medium text-gray-500 py-2 bg-gray-50 border-r border-b">Qua</div>
+                                <div class="text-center text-xs sm:text-sm font-medium text-gray-500 py-2 bg-gray-50 border-r border-b">Qui</div>
+                                <div class="text-center text-xs sm:text-sm font-medium text-gray-500 py-2 bg-gray-50 border-r border-b">Sex</div>
+                                <div class="text-center text-xs sm:text-sm font-medium text-gray-500 py-2 bg-gray-50 border-r border-b">Sáb</div>
+
+                                <!-- Calendar Days (Example Week) -->
+                                <div class="relative h-20 sm:h-24 p-1 bg-gray-50 border-r border-b text-gray-400"><span class="absolute top-1 right-1 text-xs">28</span></div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-gray-50 border-r border-b text-gray-400"><span class="absolute top-1 right-1 text-xs">29</span></div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-gray-50 border-r border-b text-gray-400"><span class="absolute top-1 right-1 text-xs">30</span></div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-gray-50 border-r border-b text-gray-400"><span class="absolute top-1 right-1 text-xs">31</span></div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">1</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-blue-100 text-blue-800 rounded truncate">Carlos O.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">2</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-blue-100 text-blue-800 rounded truncate">Carlos O.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50"><span class="absolute top-1 right-1 text-xs font-semibold">3</span></div>
+
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50"><span class="absolute top-1 right-1 text-xs font-semibold">4</span></div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">5</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-green-100 text-green-800 rounded truncate">Juliana C.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">6</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-green-100 text-green-800 rounded truncate">Juliana C.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">7</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-green-100 text-green-800 rounded truncate">Juliana C.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">8</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-green-100 text-green-800 rounded truncate">Juliana C.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">9</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-green-100 text-green-800 rounded truncate">Juliana C.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50"><span class="absolute top-1 right-1 text-xs font-semibold">10</span></div>
+
+                                <!-- Add more rows for the rest of the month -->
+                                <!-- Example: Next Week -->
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50"><span class="absolute top-1 right-1 text-xs font-semibold">11</span></div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">12</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-purple-100 text-purple-800 rounded truncate">Marcos S.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                    <span class="absolute top-1 right-1 text-xs font-semibold">13</span>
+                                    <div class="text-[10px] sm:text-xs mt-4 p-1 bg-purple-100 text-purple-800 rounded truncate">Marcos S.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                     <span class="absolute top-1 right-1 text-xs font-semibold">14</span>
+                                     <div class="text-[10px] sm:text-xs mt-4 p-1 bg-purple-100 text-purple-800 rounded truncate">Marcos S.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                     <span class="absolute top-1 right-1 text-xs font-semibold">15</span>
+                                     <div class="text-[10px] sm:text-xs mt-4 p-1 bg-purple-100 text-purple-800 rounded truncate">Marcos S.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50">
+                                     <span class="absolute top-1 right-1 text-xs font-semibold">16</span>
+                                     <div class="text-[10px] sm:text-xs mt-4 p-1 bg-purple-100 text-purple-800 rounded truncate">Marcos S.</div>
+                                </div>
+                                <div class="relative h-20 sm:h-24 p-1 bg-white border-r border-b group cursor-pointer hover:bg-gray-50"><span class="absolute top-1 right-1 text-xs font-semibold">17</span></div>
+                                <!-- Repeat for all weeks -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- List View (Optional or complementary) -->
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-medium text-gray-900">Próximas Escalas (Lista)</h3>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                            <div class="px-6 py-4 hover:bg-gray-50">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Carlos Oliveira</div>
+                                            <div class="text-sm text-gray-500">DevOps - 01/06 a 02/06</div>
+                                        </div>
+                                    </div>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 focus:outline-none">
+                                        Detalhes
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="px-6 py-4 hover:bg-gray-50">
+                               <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                                    <div class="flex items-center">
+                                         <div class="flex-shrink-0 h-10 w-10">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/women/68.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Juliana Costa</div>
+                                            <div class="text-sm text-gray-500">Infraestrutura - 05/06 a 09/06</div>
+                                        </div>
+                                    </div>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 focus:outline-none">
+                                        Detalhes
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="px-6 py-4 hover:bg-gray-50">
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/75.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Marcos Souza</div>
+                                            <div class="text-sm text-gray-500">Segurança - 12/06 a 16/06</div>
+                                        </div>
+                                    </div>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 focus:outline-none">
+                                        Detalhes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Page -->
+                <div id="history" class="page-transition hidden-page">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-3 sm:space-y-0">
+                        <h2 class="text-2xl font-bold text-gray-900">Histórico de Sobreaviso</h2>
+                        <div class="flex space-x-2">
+                            <div class="relative">
+                                <select class="appearance-none w-full sm:w-auto pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700">
+                                    <option>Todos os meses</option>
+                                    <option>Junho 2023</option>
+                                    <option>Maio 2023</option>
+                                    <option>Abril 2023</option>
+                                </select>
+                                <span class="material-icons absolute right-2 top-2.5 text-gray-400 pointer-events-none text-lg">expand_more</span>
+                            </div>
+                            <button class="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 text-gray-700">
+                                <span class="material-icons mr-1 text-base">download</span>
+                                Exportar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                                <h3 class="text-lg font-medium text-gray-900">Registros</h3>
+                                <div class="relative w-full sm:w-auto">
+                                    <input type="text" placeholder="Buscar..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64 text-sm">
+                                    <span class="material-icons absolute left-3 top-2.5 text-gray-400 text-lg">search</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colaborador</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Equipe</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horas</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">25/05/2023 08:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-8 w-8">
+                                                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
+                                                </div>
+                                                <div class="ml-3">
+                                                    <div class="text-sm font-medium text-gray-900">Carlos Oliveira</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">DevOps</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">8h</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Concluído</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button class="text-blue-600 hover:text-blue-900 hover:underline">Detalhes</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">18/05/2023 18:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                 <div class="flex-shrink-0 h-8 w-8">
+                                                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/women/68.jpg" alt="">
+                                                </div>
+                                                <div class="ml-3">
+                                                    <div class="text-sm font-medium text-gray-900">Juliana Costa</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Infraestrutura</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">12h</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Concluído</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button class="text-blue-600 hover:text-blue-900 hover:underline">Detalhes</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">11/05/2023 22:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-8 w-8">
+                                                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/men/75.jpg" alt="">
+                                                </div>
+                                                <div class="ml-3">
+                                                    <div class="text-sm font-medium text-gray-900">Marcos Souza</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Segurança</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">6h</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendente</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button class="text-blue-600 hover:text-blue-900 hover:underline">Detalhes</button>
+                                        </td>
+                                    </tr>
+                                     <!-- Add more history rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-200">
+                            <div class="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0">
+                                <div class="text-sm text-gray-500">
+                                    Mostrando <span class="font-medium">1</span> a <span class="font-medium">3</span> de <span class="font-medium">24</span> resultados
+                                </div>
+                                <div class="inline-flex items-center space-x-1">
+                                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                        Anterior
+                                    </button>
+                                    <button class="px-3 py-1 border border-blue-500 rounded-md text-sm font-medium bg-blue-50 text-blue-600 focus:outline-none">
+                                        1
+                                    </button>
+                                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none">
+                                        2
+                                    </button>
+                                     <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none">
+                                        ...
+                                    </button>
+                                      <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none">
+                                        8
+                                    </button>
+                                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 focus:outline-none">
+                                        Próximo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notifications Page -->
+                <div id="notifications" class="page-transition hidden-page">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-3 sm:space-y-0">
+                        <h2 class="text-2xl font-bold text-gray-900">Notificações</h2>
+                        <div class="flex space-x-2">
+                            <button class="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 text-gray-700">
+                                <span class="material-icons mr-1 text-base">mark_email_read</span>
+                                Marcar como lidas
+                            </button>
+                            <button class="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500 text-gray-700 hover:text-red-600">
+                                <span class="material-icons mr-1 text-base">delete_sweep</span>
+                                Limpar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="divide-y divide-gray-200">
+                            <!-- Notification Item (Unread) -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer bg-blue-50"> <!-- Unread indicator -->
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0 mt-1">
+                                       <span class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+                                            <span class="material-icons text-red-600 text-lg">priority_high</span>
+                                       </span>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-900">Alerta Crítico</p>
+                                            <p class="text-xs text-blue-600 font-medium">2 min atrás</p>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1">Servidor de produção <span class="font-semibold">SRV-PROD-01</span> apresentou alta carga de CPU (>95%). Ação necessária.</p>
+                                        <div class="mt-2 flex space-x-2">
+                                            <button class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 focus:outline-none">
+                                                Ver detalhes
+                                            </button>
+                                            <button class="text-xs px-2 py-1 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 focus:outline-none">
+                                                Ignorar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="ml-2 flex-shrink-0">
+                                        <span class="inline-block h-2 w-2 rounded-full bg-blue-500" title="Não lida"></span>
+                                    </div>
+                                </div>
+                            </div>
+                             <!-- Notification Item (Unread) -->
+                             <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer bg-blue-50"> <!-- Unread indicator -->
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0 mt-1">
+                                       <span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                                            <span class="material-icons text-blue-600 text-lg">info_outline</span>
+                                       </span>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-900">Nova Escala</p>
+                                            <p class="text-xs text-blue-600 font-medium">15 min atrás</p>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1">Você foi escalado para sobreaviso na equipe <span class="font-semibold">DevOps</span> de <span class="font-semibold">19/06 a 23/06</span>.</p>
+                                        <div class="mt-2 flex space-x-2">
+                                            <button class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 focus:outline-none" onclick="showPage('schedule'); return false;">
+                                                Ver escala
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="ml-2 flex-shrink-0">
+                                        <span class="inline-block h-2 w-2 rounded-full bg-blue-500" title="Não lida"></span>
+                                    </div>
+                                </div>
+                            </div>
+                             <!-- Notification Item (Unread) -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer bg-blue-50"> <!-- Unread indicator -->
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0 mt-1">
+                                       <span class="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100">
+                                            <span class="material-icons text-yellow-600 text-lg">warning_amber</span>
+                                       </span>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-900">Alerta Médio</p>
+                                            <p class="text-xs text-blue-600 font-medium">30 min atrás</p>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1">Uso de disco no servidor <span class="font-semibold">SRV-DB-02</span> atingiu 85%.</p>
+                                    </div>
+                                     <div class="ml-2 flex-shrink-0">
+                                        <span class="inline-block h-2 w-2 rounded-full bg-blue-500" title="Não lida"></span>
+                                    </div>
+                                </div>
+                            </div>
+                             <!-- Notification Item (Read) -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer">
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0 mt-1">
+                                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                                            <span class="material-icons text-green-600 text-lg">check_circle_outline</span>
+                                        </span>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-700">Sobreaviso Finalizado</p> <!-- Slightly muted text -->
+                                            <p class="text-xs text-gray-500">1 hora atrás</p>
+                                        </div>
+                                        <p class="text-sm text-gray-500 mt-1">Seu período de sobreaviso (Infraestrutura) foi concluído com sucesso.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Notification Item (Read) -->
+                            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer">
+                                <div class="flex items-start">
+                                     <div class="flex-shrink-0 mt-1">
+                                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+                                            <span class="material-icons text-gray-600 text-lg">schedule</span>
+                                        </span>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-gray-700">Lembrete</p>
+                                            <p class="text-xs text-gray-500">Ontem</p>
+                                        </div>
+                                        <p class="text-sm text-gray-500 mt-1">Seu sobreaviso (DevOps) começa amanhã. Verifique sua disponibilidade.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="px-6 py-4 border-t border-gray-200 text-center">
+                            <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-800">Carregar mais antigas</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="settings" class="page-transition hidden-page">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900">Configurações</h2>
+                        <p class="text-sm text-gray-500 mt-1">Gerencie as configurações do sistema e preferências pessoais.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- Notification Preferences Card -->
+                            <div class="bg-white rounded-lg shadow overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-200">
+                                    <h3 class="text-lg font-medium text-gray-900">Preferências de Notificação</h3>
+                                </div>
+                                <div class="p-6 space-y-4 divide-y divide-gray-100">
+                                    <div class="flex items-center justify-between pt-4 first:pt-0">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Alertas Críticos</p>
+                                            <p class="text-xs text-gray-500">Notificações imediatas para problemas críticos (Push, Email, SMS)</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" value="" class="sr-only peer" checked>
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+                                    <div class="flex items-center justify-between pt-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Notificações por Email</p>
+                                            <p class="text-xs text-gray-500">Receber resumos e alertas por email</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" value="" class="sr-only peer" checked>
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+                                    <div class="flex items-center justify-between pt-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Notificações Push no App</p>
+                                            <p class="text-xs text-gray-500">Receber notificações diretamente no aplicativo móvel</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" value="" class="sr-only peer">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+                                     <div class="flex items-center justify-between pt-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Notificações por SMS</p>
+                                            <p class="text-xs text-gray-500">Receber alertas críticos por SMS (requer plano Pro)</p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" value="" class="sr-only peer" disabled> <!-- Example disabled -->
+                                            <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 opacity-50 cursor-not-allowed"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="px-6 py-4 bg-gray-50 text-right border-t border-gray-200">
+                                     <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Salvar Preferências</button>
+                                </div>
+                            </div>
+
+                            <!-- Profile Information Card -->
+                            <div class="bg-white rounded-lg shadow overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-200">
+                                    <h3 class="text-lg font-medium text-gray-900">Informações do Perfil</h3>
+                                </div>
+                                <form class="p-6 space-y-4">
+                                    <div>
+                                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                                        <input type="text" id="name" name="name" value="Ana Silva" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                        <input type="email" id="email" name="email" value="ana.silva@empresa.com" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                     <div>
+                                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telefone (para SMS)</label>
+                                        <input type="tel" id="phone" name="phone" value="+55 11 98765-4321" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="role" class="block text-sm font-medium text-gray-700 mb-1">Função</label>
+                                        <input type="text" id="role" name="role" value="Admin" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 focus:outline-none sm:text-sm text-gray-500" readonly>
+                                    </div>
+                                    <div>
+                                        <label for="timezone" class="block text-sm font-medium text-gray-700 mb-1">Fuso Horário</label>
+                                        <select id="timezone" name="timezone" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md appearance-none border bg-white">
+                                            <option>(GMT-03:00) Sao Paulo</option>
+                                            <option>(GMT-05:00) Eastern Time (US & Canada)</option>
+                                            <option>(GMT+00:00) London</option>
+                                            <!-- Add more timezones -->
+                                        </select>
+                                    </div>
+                                </form>
+                                 <div class="px-6 py-4 bg-gray-50 text-right border-t border-gray-200">
+                                     <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Atualizar Perfil</button>
+                                </div>
+                            </div>
+
+                            <!-- Security Card -->
+                             <div class="bg-white rounded-lg shadow overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-200">
+                                    <h3 class="text-lg font-medium text-gray-900">Segurança</h3>
+                                </div>
+                                <div class="p-6 space-y-4">
+                                     <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Alterar Senha</p>
+                                            <p class="text-xs text-gray-500">Recomendamos alterar sua senha periodicamente.</p>
+                                        </div>
+                                        <button class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500">
+                                            Alterar
+                                        </button>
+                                     </div>
+                                     <div class="flex items-center justify-between border-t border-gray-100 pt-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Autenticação de Dois Fatores (2FA)</p>
+                                            <p class="text-xs text-gray-500">Adicione uma camada extra de segurança à sua conta.</p>
+                                            <span class="text-xs font-semibold text-green-600 block mt-1">Ativado (SMS)</span>
+                                        </div>
+                                        <button class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500">
+                                            Gerenciar
+                                        </button>
+                                     </div>
+                                      <div class="flex items-center justify-between border-t border-gray-100 pt-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Sessões Ativas</p>
+                                            <p class="text-xs text-gray-500">Veja e gerencie onde sua conta está conectada.</p>
+                                        </div>
+                                        <button class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500">
+                                            Ver Sessões
+                                        </button>
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sidebar Info Cards -->
+                        <div class="space-y-6">
+                            <div class="bg-white rounded-lg shadow p-6">
+                                 <h3 class="text-lg font-medium text-gray-900 mb-4">Informações da Conta</h3>
+                                 <div class="space-y-3 text-sm text-gray-600">
+                                     <p><span class="font-medium text-gray-800 w-24 inline-block">Usuário:</span> Ana Silva</p>
+                                     <p><span class="font-medium text-gray-800 w-24 inline-block">ID:</span> USR12345</p>
+                                     <p><span class="font-medium text-gray-800 w-24 inline-block">Plano:</span> Pro <a href="#" class="text-blue-600 hover:underline text-xs ml-1">(Gerenciar)</a></p>
+                                     <p><span class="font-medium text-gray-800 w-24 inline-block">Desde:</span> Jan 2022</p>
+                                 </div>
+                            </div>
+                             <div class="bg-white rounded-lg shadow p-6">
+                                 <h3 class="text-lg font-medium text-gray-900 mb-4">Ações Rápidas</h3>
+                                 <div class="space-y-3">
+                                     <button class="w-full flex items-center justify-center px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500">
+                                        <span class="material-icons mr-2 text-base">api</span>
+                                         Gerenciar Chaves de API
+                                     </button>
+                                     <button class="w-full flex items-center justify-center px-4 py-2 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500">
+                                         <span class="material-icons mr-2 text-base">logout</span>
+                                         Sair da Conta
+                                     </button>
+                                      <button class="w-full flex items-center justify-center px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500">
+                                         <span class="material-icons mr-2 text-base">help_outline</span>
+                                         Central de Ajuda
+                                     </button>
+                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- End Settings Page -->
+
+
+            </main> <!-- End Page Content -->
+        </div> <!-- End Main Content -->
+    </div> <!-- End App Container -->
+
+    <script>
+        const drawer = document.getElementById('drawer');
+        const menuButton = document.getElementById('menu-button');
+        const pageTitle = document.getElementById('page-title');
+        const pages = document.querySelectorAll('.page-transition');
+        const navButtons = document.querySelectorAll('.nav-button');
+        const drawerOverlay = document.getElementById('drawer-overlay');
+
+        const pageTitles = {
+            dashboard: 'Dashboard',
+            teams: 'Equipes',
+            schedule: 'Escala',
+            history: 'Histórico',
+            notifications: 'Notificações',
+            settings: 'Configurações'
+        };
+
+        function showPage(pageId, clickedButton = null) {
+            // Hide all pages
+            pages.forEach(page => {
+                page.classList.add('hidden-page');
+                page.classList.remove('visible-page');
+            });
+
+            // Show the selected page
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.remove('hidden-page');
+                targetPage.classList.add('visible-page');
+                // Update page title
+                pageTitle.textContent = pageTitles[pageId] || 'Página';
+            } else {
+                console.error(`Page with id '${pageId}' not found.`);
+                // Fallback to dashboard if page not found
+                const dashboardPage = document.getElementById('dashboard');
+                if (dashboardPage) {
+                    dashboardPage.classList.remove('hidden-page');
+                    dashboardPage.classList.add('visible-page');
+                    pageTitle.textContent = pageTitles['dashboard'];
+                    // Highlight dashboard button
+                    setActiveButton(document.querySelector('button[onclick*="dashboard"]'));
+                }
+                return; // Exit if page not found
+            }
+
+            // Update active button state in drawer
+            if (clickedButton) {
+                setActiveButton(clickedButton);
+            } else {
+                // If called without button (e.g., programmatically), find the corresponding button
+                const correspondingButton = document.querySelector(`button[onclick*="'${pageId}'"]`);
+                setActiveButton(correspondingButton);
+            }
+
+
+            // Close drawer on mobile after page selection
+             if (window.innerWidth < 768 && !drawer.classList.contains('-translate-x-full')) {
+                 closeDrawer();
+            }
+
+            // Scroll main content to top on page change
+             document.querySelector('main').scrollTop = 0;
+        }
+
+        function setActiveButton(activeButton) {
+            // Remove active class from all buttons
+            navButtons.forEach(button => {
+                button.classList.remove('bg-gray-200', 'text-blue-600', 'font-semibold'); // Example active classes
+                button.classList.add('text-gray-900'); // Ensure default text color
+            });
+
+            // Add active class to the clicked button
+            if (activeButton) {
+                activeButton.classList.add('bg-gray-200', 'text-blue-600', 'font-semibold');
+                activeButton.classList.remove('text-gray-900');
+            }
+        }
+
+
+        function openDrawer() {
+            drawer.classList.remove('-translate-x-full');
+            drawerOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            drawerOverlay.classList.add('opacity-100');
+        }
+
+         function closeDrawer() {
+            drawer.classList.add('-translate-x-full');
+            drawerOverlay.classList.remove('opacity-100');
+            drawerOverlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        // Menu button event listener (for mobile)
+        menuButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent click from immediately closing via overlay
+            if (drawer.classList.contains('-translate-x-full')) {
+                openDrawer();
+            } else {
+                closeDrawer();
+            }
+        });
+
+         // Overlay click listener (for mobile)
+        drawerOverlay.addEventListener('click', () => {
+            closeDrawer();
+        });
+
+        // Close drawer if window is resized to desktop view while drawer is open
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                // Ensure drawer is visible on desktop by removing transform if needed
+                 drawer.classList.remove('-translate-x-full');
+                // Hide overlay on desktop
+                 drawerOverlay.classList.add('opacity-0', 'pointer-events-none');
+            } else {
+                 // If resizing back to mobile and drawer was meant to be hidden, re-apply
+                 // Note: This part might need refinement based on desired state persistence
+            }
+        });
+
+        // Initialize the view with the dashboard page and set the active button
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialButton = document.querySelector('button[onclick*="dashboard"]');
+             showPage('dashboard', initialButton); // Show dashboard and highlight its button
+        });
+
+    </script>
+</body>
+</html>
